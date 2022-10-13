@@ -1,5 +1,5 @@
 ENTITIES:
-- User (user_id (PK), password, games_played, win_percentage, current_streak, max_streak)
+- User (user_id (PK), password, games_played, current_streak, max_streak)
 - Game (game_id (PK), game_secret_word**, won(boolean), number_of_guesses_made, number_of_guesses_left, user_id (FK))
 - wordGuess (user_word_guess_id (PK), user_word_guess**, game_id(FK))
 
