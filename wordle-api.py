@@ -8,12 +8,7 @@ from dataclasses import dataclass
 from flask import render_template, abort
 
 
-engine = create_engine('sqlite:///C:/Users/bruht/PycharmProjects/quart-test/testDB.db', echo=False)
 db = Database('sqlite:///C:/Users/bruht/PycharmProjects/quart-test/testDB.db')
-#engine = create_engine('sqlite:///home/students/Documents')
-
-
-##EXAMPLE DB/SQL-ALCHEMY CODE
 metadata = sqlalchemy.MetaData()
 
 users = sqlalchemy.Table(
@@ -23,11 +18,9 @@ users = sqlalchemy.Table(
     Column("password", String(length=100))
 )
 
-metadata.create_all(engine)
 
 app = Quart(__name__)
 QuartSchema(app)
-
 
 @app.route("/")
 async def index():
@@ -44,11 +37,9 @@ async def create_user():
     entered_id = data['user_id']
     entered_pass = data['password']
 
-    stmt = (
-        insert(users).
-        values(user_id=entered_id, password=entered_pass)
-    )
-    engine.execute(stmt)
+    query = users.insert()
+    values = {"user_id": entered_id, "password": entered_pass}
+    await db.execute(query=query, values=values)
 
     return jsonify({"Account created with ID": entered_id})
 
@@ -61,29 +52,18 @@ async def login():
     app.logger.debug(user_data)
     entered_id = data['user_id']
 
-    query = select(users).where(users.c.user_id == entered_id)
-    if engine.connect().execute(query) is not None:
-        print("NONE")
-
-    if select(users).where(users.c.user_id == entered_id) is not None:
-        stmt = select(users).where(users.c.user_id == entered_id)
-        with engine.connect() as conn:
-            if conn.execute(stmt).fetchone() is None:
-                return "404 Not Found"
-            try:
-                for row in conn.execute(stmt).fetchall():
-                    return jsonify({"Data found for searched ID": entered_id})
-            except:
-                print("An exception occurred")
+    query = "SELECT * FROM users WHERE user_id = :id"
+    row = await db.fetch_one(query=query, values={"id": entered_id})
+    if row is not None:
+        return jsonify({"Data found for searched ID": entered_id})
     else:
-        return jsonify({"Data NOT FOUND for searched ID": entered_id})
-
+        return jsonify({"Error Message": "404 Not Found"})
 
 
 @app.route("/DB")
 async def db_connect():
 
-    connection = engine.connect()
+    connection = await db.connect()
     print("connection: " + str(connection))
     return str(connection)
 
