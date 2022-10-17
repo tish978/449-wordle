@@ -1,4 +1,4 @@
-from quart import Quart, request, jsonify
+from quart import Quart, request, jsonify, abort
 from quart_schema import QuartSchema #, DataSource, validate_request
 import sqlalchemy
 from sqlalchemy import create_engine, insert, select, Table, Column, Integer, String, Boolean
@@ -9,7 +9,6 @@ from flask import render_template, abort
 
 
 engine = create_engine('sqlite:///C:/Users/bruht/PycharmProjects/quart-test/testDB.db', echo=True)
-
 db = Database('sqlite:///C:/Users/bruht/PycharmProjects/quart-test/testDB.db')
 metadata = sqlalchemy.MetaData()
 
@@ -48,6 +47,11 @@ metadata.create_all(engine)
 app = Quart(__name__)
 QuartSchema(app)
 
+
+@app.errorhandler(404)
+def not_found(e):
+    return {"error": "The resource could not be found"}, 404
+
 @app.route("/")
 async def index():
     return "hello"
@@ -67,23 +71,24 @@ async def create_user():
     values = {"user_id": entered_id, "password": entered_pass}
     await db.execute(query=query, values=values)
 
-    return jsonify({"Account created with ID": entered_id})
+    return jsonify({"authenticated": "true"})
 
 
 @app.route("/login", methods=["POST"])
 async def login():
     data = await request.get_json()
 
-    user_data = f"{data['user_id']}"
+    user_data = f"{data['user_id']} {data['password']}"
     app.logger.debug(user_data)
     entered_id = data['user_id']
+    entered_pass = data['password']
 
-    query = "SELECT * FROM users WHERE user_id = :id"
-    row = await db.fetch_one(query=query, values={"id": entered_id})
+    query = "SELECT * FROM users WHERE user_id = :id AND password = :pass"
+    row = await db.fetch_one(query=query, values={"id": entered_id, "pass": entered_pass})
     if row is not None:
-        return jsonify({"Data found for searched ID": entered_id})
+        return jsonify({"authenticated": "true"})
     else:
-        return jsonify({"Error Message": "404 Not Found"})
+        abort(404)
 
 
 @app.route("/DB")
