@@ -5,7 +5,6 @@ from sqlalchemy import create_engine, insert, select, Table, Column, Integer, St
 from databases import Database
 import socket
 from dataclasses import dataclass
-from flask import render_template, abort
 import json
 import wget
 
