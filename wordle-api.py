@@ -6,7 +6,12 @@ from databases import Database
 import socket
 from dataclasses import dataclass
 from flask import render_template, abort
+import json
+import wget
 
+url = 'https://www.nytimes.com/games-assets/v2/wordle.9137f06eca6ff33e8d5a306bda84e37b69a8f227.js'
+filename = wget.download(url)
+print("filename: " + str(filename))
 
 
 engine = create_engine('sqlite:///C:/Users/bruht/PycharmProjects/quart-test/testDB.db', echo=True)
@@ -72,8 +77,6 @@ async def create_user():
     values = {"user_id": entered_id, "password": entered_pass}
     await db.execute(query=query, values=values)
 
-    isAuthenticated = True
-
     return jsonify({"authenticated": "true"})
 
 
@@ -107,8 +110,8 @@ async def create_new_game(id):
             await db.execute(query=query, values={"newID": new_game_id, "word": "word", "won": False, "made": 0, "left": 6, "user_id": id})
             return "New Game Entered"
     else:
-        query = "INSERT INTO games (game_id, user_id) VALUES (1, :user_id);"
-        await db.execute(query=query, values={"user_id": id})
+        query = "INSERT INTO games (game_id, user_id) VALUES (1, :word, :won, :made, :left, :user_id);"
+        await db.execute(query=query, values={"word": "word", "won": False, "made": 0, "left": 6, "user_id": id})
         return "First Game Entered"
 
 
