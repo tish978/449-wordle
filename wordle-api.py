@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from flask import render_template, abort
 
 
+
 engine = create_engine('sqlite:///C:/Users/bruht/PycharmProjects/quart-test/testDB.db', echo=True)
 db = Database('sqlite:///C:/Users/bruht/PycharmProjects/quart-test/testDB.db')
 metadata = sqlalchemy.MetaData()
@@ -71,6 +72,8 @@ async def create_user():
     values = {"user_id": entered_id, "password": entered_pass}
     await db.execute(query=query, values=values)
 
+    isAuthenticated = True
+
     return jsonify({"authenticated": "true"})
 
 
@@ -83,12 +86,32 @@ async def login():
     entered_id = data['user_id']
     entered_pass = data['password']
 
-    query = "SELECT * FROM users WHERE user_id = :id AND password = :pass"
+    query = "SELECT * FROM users WHERE user_id = :id AND password = :pass;"
     row = await db.fetch_one(query=query, values={"id": entered_id, "pass": entered_pass})
     if row is not None:
         return jsonify({"authenticated": "true"})
     else:
         abort(404)
+
+
+@app.route("/create_new_game/<int:id>", methods=["POST"])
+async def create_new_game(id):
+
+    lastGameIDQuery = "SELECT game_id FROM games ORDER BY game_id DESC LIMIT 1;"
+    lastRow = await db.fetch_one(query=lastGameIDQuery)
+    if lastRow is not None:
+        for game_id in lastRow:
+            new_game_id = game_id + 1
+            print("new_game_id: " + str(new_game_id))
+            query = "INSERT INTO games (game_id, game_secret_word, won, number_of_guesses_made, number_of_guesses_left, user_id) VALUES (:newID, :word, :won, :made, :left, :user_id)"
+            await db.execute(query=query, values={"newID": new_game_id, "word": "word", "won": False, "made": 0, "left": 6, "user_id": id})
+            return "New Game Entered"
+    else:
+        query = "INSERT INTO games (game_id, user_id) VALUES (1, :user_id);"
+        await db.execute(query=query, values={"user_id": id})
+        return "First Game Entered"
+
+
 
 
 @app.route("/DB")
