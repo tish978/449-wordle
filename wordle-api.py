@@ -7,46 +7,13 @@ import socket
 from dataclasses import dataclass
 import json
 import wget
-
-url = 'https://www.nytimes.com/games-assets/v2/wordle.9137f06eca6ff33e8d5a306bda84e37b69a8f227.js'
-filename = wget.download(url)
-print("filename: " + str(filename))
+import sqlite3
+import correctWords
 
 
-engine = create_engine('sqlite:///C:/Users/bruht/PycharmProjects/quart-test/testDB.db', echo=True)
-db = Database('sqlite:///C:/Users/bruht/PycharmProjects/quart-test/testDB.db')
-metadata = sqlalchemy.MetaData()
 
-users = sqlalchemy.Table(
-    "users",
-    metadata,
-    Column("user_id", Integer, primary_key=True),
-    Column("password", String(length=100)),
-    Column("games_played", Integer)
-)
+db = Database('sqlite:////home/student/Documents/449-wordle/wordle-DB')
 
-
-games = sqlalchemy.Table(
-    "games",
-    metadata,
-    Column("game_id", Integer, primary_key=True),
-    Column("game_secret_word", String(length=100)),
-    Column("won", Boolean),
-    Column("number_of_guesses_made", Integer),
-    Column("number_of_guesses_left", Integer),
-    Column("user_id", Integer, foreign_key=True)
-)
-
-
-wordGuess = sqlalchemy.Table(
-    "wordGuess",
-    metadata,
-    Column("user_word_guess_id", Integer, primary_key=True),
-    Column("user_word_guess", String(length=100)),
-    Column("game_id", Integer, foreign_key=True)
-)
-
-metadata.create_all(engine)
 
 
 app = Quart(__name__)
@@ -68,11 +35,13 @@ async def create_user():
 
     user_data = f"{data['user_id']} {data['password']}"
     app.logger.debug(user_data)
-
+    
     entered_id = data['user_id']
     entered_pass = data['password']
+    
+    query = "INSERT INTO users(user_id, password) VALUES (:user_id, :password)"
+  
 
-    query = users.insert()
     values = {"user_id": entered_id, "password": entered_pass}
     await db.execute(query=query, values=values)
 
@@ -82,36 +51,52 @@ async def create_user():
 @app.route("/login", methods=["POST"])
 async def login():
     data = await request.get_json()
-
     user_data = f"{data['user_id']} {data['password']}"
+
     app.logger.debug(user_data)
     entered_id = data['user_id']
     entered_pass = data['password']
+    
+    query = "SELECT * FROM users WHERE user_id = :id and password = :password"
+    row = await db.execute(query=query, values={"id": entered_id, "password": entered_pass})
+    if row:
+    	return jsonify({"authenticated": "true"})
+    
 
-    query = "SELECT * FROM users WHERE user_id = :id AND password = :pass;"
-    row = await db.fetch_one(query=query, values={"id": entered_id, "pass": entered_pass})
-    if row is not None:
+    
+
+@app.route("/login/<int:id><string:password>", methods=["GET"])
+async def login_user(id, password):
+    db = await request.get_json()
+    book = await db.fetch_one("SELECT * FROM users WHERE user_id = :user_id AND password = :password", values={"user_id": id, "password": password})
+    if book:
         return jsonify({"authenticated": "true"})
     else:
         abort(404)
 
-
 @app.route("/create_new_game/<int:id>", methods=["POST"])
 async def create_new_game(id):
+    query = "INSERT INTO games (game_id, game_secret_word, won, number_of_guesses_made, number_of_guesses_left, user_id) VALUES (NULL, :word, :won, :made, :left, :user_id)"
+    await db.execute(query=query, values={"word": "word", "won": False, "made": 0, "left": 6, "user_id": id})
+    return jsonify({"Success": "New Game Entered"})
 
-    lastGameIDQuery = "SELECT game_id FROM games ORDER BY game_id DESC LIMIT 1;"
-    lastRow = await db.fetch_one(query=lastGameIDQuery)
-    if lastRow is not None:
-        for game_id in lastRow:
-            new_game_id = game_id + 1
-            print("new_game_id: " + str(new_game_id))
-            query = "INSERT INTO games (game_id, game_secret_word, won, number_of_guesses_made, number_of_guesses_left, user_id) VALUES (:newID, :word, :won, :made, :left, :user_id)"
-            await db.execute(query=query, values={"newID": new_game_id, "word": "word", "won": False, "made": 0, "left": 6, "user_id": id})
-            return "New Game Entered"
-    else:
-        query = "INSERT INTO games (game_id, user_id) VALUES (1, :word, :won, :made, :left, :user_id);"
-        await db.execute(query=query, values={"word": "word", "won": False, "made": 0, "left": 6, "user_id": id})
-        return "First Game Entered"
+
+
+
+
+@app.route("/TEST_word_load/", methods=["POST"])
+async def word_load():
+
+    #for word in correctWord:
+    for word in correctWords.correctWord:
+        query = "INSERT INTO correctWords (correct_word_id, correct_word, game_id) VALUES (NULL, :correctWord, NULL)"
+        await db.execute(query=query,
+                         values={"correctWord": word})
+
+    return "All words loaded into DB"
+
+
+
 
 
 
