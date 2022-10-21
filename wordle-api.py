@@ -97,7 +97,54 @@ async def word_load():
 
 
 
+@app.route('/input/', methods=['GET'])
+async def input():
+    #randomly selecting a word from the correctWords.py
+    secretWord = str(random.choice(correctWords.correctWord))
+    #parsing the secretWord into single char
+    firstLetterSW = secretWord[0]
+    secondLetterSW = secretWord[1]
+    thirdLetterSW = secretWord[2]
+    fourthLetterSW = secretWord[3]
+    fifthLetterSW = secretWord[4]
 
+    word = str (request.args.get('word'))
+    counter = 0
+    
+    if word == "secret":
+        return {
+                'Call' : 'Input',
+                'Status' : 200,
+                'Response' : secretWord
+                }, 200
+    
+    if word == "":
+        return {
+                'Call' : 'Input',
+                'Status' : 400,
+                'Response' : 'No Word Input'
+                }, 400
+    
+    if len(word) != 5:
+        return {
+                'Call' : 'Input',
+                'Status' : 400,
+                'Response' : 'Is not length 5'
+                }, 400
+
+    if word in correctWords.correctWord:
+        return {
+                'Call' : 'Input',
+                'Status' : 200,
+                'Response' : 'Valid word but not Secret Word'
+                }, 200
+
+    if word == secretWord:
+        return {
+                'Call' : 'Input',
+                'Status' : 200,
+                'Response' : True
+                }, 200
 
 
 
@@ -108,5 +155,5 @@ async def db_connect():
     print("connection: " + str(connection))
     return str(connection)
 
-app.run()
+app.run(host='0.0.0.0', port=5000)
 
